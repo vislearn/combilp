@@ -1,0 +1,15 @@
+[submodule "external/opengm"]
+	path = external/opengm
+	url = https://github.com/opengm/opengm.git
+
+[submodule "external/part_opt"]
+	path = external/part_opt
+	url = https://github.com/fgrsnau/part_opt.git
+
+[submodule "external/srmp"]
+	path = external/srmp
+	url = https://github.com/fgrsnau/SRMP.git
+
+[submodule "external/toulbar2"]
+	path = external/toulbar2
+	url = http://mulcyber.toulouse.inra.fr/anonscm/git/toulbar2/toulbar2.git
