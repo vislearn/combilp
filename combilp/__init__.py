@@ -18,9 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .loader import *
-from .model import *
-from .reparametrization import *
-from .solver import *
-from .subsolvers import *
-from .utils import *
+from . import subsolvers
+from .loader import load_hdf5
+from .model import DynamicFactor, Factor, make_labeling, Model, walk_shape
+from .reparametrization import Reparametrization
+from .solver import CombiLP
+from .utils import PerformanceMeasurement
