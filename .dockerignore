@@ -1,0 +1,7 @@
+/.git/
+/code/external/toulbar2/*
+!/code/external/toulbar2/toulbar2/src/
+/code/external/part_opt/*
+!/code/external/part_opt/code
+/code/external/opengm/*
+!/code/external/opengm/include
