@@ -223,7 +223,6 @@ class ToulBar2(NonIterativeSolver):
             min_cost, max_cost = c_int64(), c_int64()
             self._initialize(min_cost, max_cost)
             self.min_cost, self.max_cost = min_cost.value, max_cost.value
-            print(self.min_cost, self.max_cost)
 
         def __del__(self):
             if self._solver:
@@ -254,7 +253,6 @@ class ToulBar2(NonIterativeSolver):
             self._get_labeling.argtypes = [c_void_p, ndpointer(dtype=c_int32)]
 
         def add_full_model(self):
-            print('This is called.')
             self._solver = self._create(self.model.number_of_variables, self.model.shape)
             for factor in self.model.factors:
                 shape = [self.model.number_of_labels(x) for x in factor.variables]
@@ -263,7 +261,6 @@ class ToulBar2(NonIterativeSolver):
                     factor.variables, shape, self.convert_costs(factor.data))
 
         def solve(self):
-            print(self._solver)
             result = self._solve(self._solver)
             if not result:
                 raise RuntimeError('Inference was not optimal.')
