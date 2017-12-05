@@ -101,6 +101,10 @@ class Cplex(ILPSolver):
         self.constant += minimum
         factor.data -= minimum
 
+        # handle infinity
+        factor.data[factor.data > cplex.infinity] = cplex.infinity
+        factor.data[factor.data < -cplex.infinity] = -cplex.infinity
+
         if factor.number_of_variables == 1:
             self._add_factor_unary(factor)
         else:
