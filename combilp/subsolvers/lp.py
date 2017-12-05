@@ -70,7 +70,7 @@ class TRWS(LPSolver):
             self._solver = None
 
     def _init_library(self):
-        self._lib = ctypes.cdll.LoadLibrary('./libcombilp_trws_stub.so')
+        self._lib = ctypes.cdll.LoadLibrary('libcombilp_trws_stub.so')
 
         self._energy_create = self._lib.combilp_trws_stub_energy_create
         self._energy_create.argtypes = [c_int32, ndpointer(dtype=c_int32), c_int32]
@@ -145,7 +145,7 @@ class SRMP(LPSolver):
             self._solver = None
 
     def _init_library(self):
-        self._lib = ctypes.cdll.LoadLibrary('./libcombilp_srmp_stub.so')
+        self._lib = ctypes.cdll.LoadLibrary('libcombilp_srmp_stub.so')
         self._message_func_type = CFUNCTYPE(None, c_size_t, POINTER(c_int32), c_int32, POINTER(c_double), POINTER(c_double))
         self._message_func_type.from_param = self._message_func_type
 

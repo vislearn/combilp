@@ -33,7 +33,7 @@ def _init_opengm_stub():
     if g['_opengm_stub']:
         return
 
-    g['_opengm_stub'] = ctypes.cdll.LoadLibrary('./libcombilp_opengm_stub.so')
+    g['_opengm_stub'] = ctypes.cdll.LoadLibrary('libcombilp_opengm_stub.so')
 
     g['_init_shape_func_type'] = CFUNCTYPE(None, c_int, POINTER(c_int))
     g['_init_shape_func_type'].from_param = g['_init_shape_func_type']

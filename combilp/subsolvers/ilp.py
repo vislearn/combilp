@@ -230,7 +230,7 @@ class ToulBar2(NonIterativeSolver):
                 self._solver = None
 
         def _init_library(self):
-            self._lib = ctypes.cdll.LoadLibrary('./libcombilp_toulbar2_stub.so')
+            self._lib = ctypes.cdll.LoadLibrary('libcombilp_toulbar2_stub.so')
 
             self._initialize = self._lib.combilp_toulbar2_stub_initialize
             self._initialize.argtypes = [POINTER(c_int64), POINTER(c_int64)]
