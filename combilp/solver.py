@@ -157,7 +157,7 @@ class CombiLP(object):
         print('\n--- Summary ---')
         print('solution = {}'.format(self.upper_bound))
         print('combilp iterations = {}'.format(combilp_iteration + 1))
-        print('final ilp size = {}'.format(sum(self.mask)))
+        print('final ilp size = {} / {} ({:.2f}%)'.format(sum(self.mask), len(self.mask), sum(self.mask) / len(self.mask) * 100.0))
         for name, performance in self.timers.items():
             print('time({}) = {:.2f}s'.format(name, performance.total))
         print('time(UNKNOWN) = {:.2f}s'.format(misc))
