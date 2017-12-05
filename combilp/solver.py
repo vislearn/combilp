@@ -26,7 +26,8 @@ import sys
 from .model import walk_shape, walk_sub_shape, Model, Factor
 from .reparametrization import Reparametrization
 from .utils import (compute_strict_arc_consistency, PerformanceMeasurement,
-    reparametrize_border, reparametrize_border_factor, unary_reparametrization)
+    PerformanceStatistics, reparametrize_border, reparametrize_border_factor,
+    unary_reparametrization)
 from .subsolvers.lp import TRWS
 from .subsolvers.ilp import Cplex
 
@@ -43,7 +44,7 @@ class CombiLP(object):
     def __init__(self, model, parameters=None):
         self.model = model
         self.mask = [False] * model.number_of_variables
-        self.elapsed_ilp_time = 0
+        self.timers = PerformanceStatistics()
 
         self.parameters = DEFAULTS.copy()
         if (parameters):
@@ -51,37 +52,45 @@ class CombiLP(object):
 
     def solve_lp_relaxation(self):
         print('--- Solving LP Relaxation ---', flush=True)
-        lp_solver = self.parameters['lp_solver'](self.model, self.parameters['lp'])
-        lp_solver.solve()
-        self.repa = lp_solver.get_repametrization()
-        unary_reparametrization(self.repa)
-        self.sac_mask, self.sac_labeling = compute_strict_arc_consistency(
-            self.repa.reparametrize_model(dynamic=False))
+
+        with self.timers.lp_solver_construction:
+            lp_solver = self.parameters['lp_solver'](self.model, self.parameters['lp'])
+        with self.timers.lp_solver_solve:
+            lp_solver.solve()
+        with self.timers.reparametrization:
+            self.repa = lp_solver.get_repametrization()
+            unary_reparametrization(self.repa)
+        with self.timers.sac_computation:
+            self.sac_mask, self.sac_labeling = compute_strict_arc_consistency(
+                self.repa.reparametrize_model(dynamic=False))
 
     # This function does not perform border repa, watch out!
     def add_varariable_to_ilp(self, variable):
         assert(not self.mask[variable])
         self.mask[variable] = True
-        self.ilp_solver.add_variable(variable)
+        with self.timers.add_variable:
+            self.ilp_solver.add_variable(variable)
 
-        for factor in self.rmodel.factors_of_variable(variable):
-            is_included = True
-            for neighbor in factor.variables:
-                if variable != neighbor and not self.mask[neighbor]:
-                    is_included = False
+        with self.timers.add_factor:
+            for factor in self.rmodel.factors_of_variable(variable):
+                is_included = True
+                for neighbor in factor.variables:
+                    if variable != neighbor and not self.mask[neighbor]:
+                        is_included = False
 
-            if is_included:
-                self.ilp_solver.add_factor(factor)
+                if is_included:
+                    self.ilp_solver.add_factor(factor)
 
     # This function performs dense repa once before adding the variables.
     def add_varariables_to_ilp(self, variables):
         assert(not any(self.mask[x] for x in variables))
         print('Adding {} variables to ILP subproblem.'.format(len(variables)))
 
-        new_mask = self.mask.copy()
-        for variable in variables:
-            new_mask[variable] = True
-        reparametrize_border(self.repa, new_mask)
+        with self.timers.reparametrization:
+            new_mask = self.mask.copy()
+            for variable in variables:
+                new_mask[variable] = True
+            reparametrize_border(self.repa, new_mask)
 
         for variable in variables:
             self.add_varariable_to_ilp(variable)
@@ -109,39 +118,47 @@ class CombiLP(object):
                     self.mismatches.append(factor)
 
     def run_iteration(self):
-        pm = PerformanceMeasurement()
-        with pm:
+        with self.timers.ilp_solver_solve:
             self.ilp_solver.solve()
-        self.elapsed_ilp_time += pm.elapsed
-        print(' -> elapsed ILP time: {:.2f}s'.format(pm.elapsed))
-        print(' -> solution for ILP: {}'.format(self.ilp_solver.upper_bound()))
-        self.update_labeling()
+        print('elapsed ILP time: {:.2f}s'.format(self.timers.ilp_solver_solve.last))
+        print('solution for ILP: {}'.format(self.ilp_solver.upper_bound()))
 
-        self.upper_bound = self.model.evaluate(self.labeling)
-        self.update_lower_bound()
+        with self.timers.evaluate:
+            self.update_labeling()
+            self.upper_bound = self.model.evaluate(self.labeling)
+            self.update_lower_bound()
 
         print('current bounds: {} <= {} (delta: {})'.format(self.lower_bound,
             self.upper_bound, self.upper_bound - self.lower_bound))
 
     def solve(self):
-        self.solve_lp_relaxation()
-        self.rmodel = self.repa.reparametrize_model(dynamic=True)
-        self.ilp_solver = self.parameters['ilp_solver'](self.rmodel, self.parameters['ilp'])
+        time_everything = PerformanceMeasurement()
+        with time_everything:
+            self.solve_lp_relaxation()
+            self.rmodel = self.repa.reparametrize_model(dynamic=True)
+            self.ilp_solver = self.parameters['ilp_solver'](self.rmodel, self.parameters['ilp'])
 
-        self.add_varariables_to_ilp([v for v, x in enumerate(self.sac_mask) if not x])
-        assert(self.mask == [not x for x in self.sac_mask])
+            self.add_varariables_to_ilp([v for v, x in enumerate(self.sac_mask) if not x])
+            assert(self.mask == [not x for x in self.sac_mask])
 
-        for combilp_iteration in range(self.parameters['max_iterations']):
-            print('\n--- CombiLP iteration {} ({} variables) ---'.format(
-                combilp_iteration, sum(self.mask)), flush=True)
-            self.run_iteration()
-            print('{} mismatching factors'.format(len(self.mismatches)))
-            if not self.mismatches:
-                break
+            for combilp_iteration in range(self.parameters['max_iterations']):
+                print('\n--- CombiLP iteration {} ({} variables) ---'.format(
+                    combilp_iteration + 1, sum(self.mask)), flush=True)
+                self.run_iteration()
+                print('{} mismatching factors'.format(len(self.mismatches)))
+                if not self.mismatches:
+                    break
 
-            variables_to_add = set(filter(lambda x: not self.mask[x],
-                itertools.chain.from_iterable(factor.variables for factor in self.mismatches)))
-            self.add_varariables_to_ilp(variables_to_add)
+                variables_to_add = set(filter(lambda x: not self.mask[x],
+                    itertools.chain.from_iterable(factor.variables for factor in self.mismatches)))
+                self.add_varariables_to_ilp(variables_to_add)
 
-        print('\n --- Summary ---')
-        print(' -> elapsed total ILP time: {}'.format(self.elapsed_ilp_time))
+        misc = time_everything.total - sum(t.total for _, t in self.timers.items())
+        print('\n--- Summary ---')
+        print('solution = {}'.format(self.upper_bound))
+        print('combilp iterations = {}'.format(combilp_iteration + 1))
+        print('final ilp size = {}'.format(sum(self.mask)))
+        for name, performance in self.timers.items():
+            print('time({}) = {:.2f}s'.format(name, performance.total))
+        print('time(UNKNOWN) = {:.2f}s'.format(misc))
+        print('time(TOTAL) = {:.2f}s'.format(time_everything.total))

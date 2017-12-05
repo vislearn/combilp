@@ -25,14 +25,26 @@ from .model import DTYPE_INDEX, make_labeling, walk_shape
 
 class PerformanceMeasurement:
     def __init__ (self):
-        self.elapsed = 0.0
+        self.last = 0.0
+        self.total = 0.0
 
     def __enter__(self):
-        self.start = time.time()
+        self.start = time.perf_counter()
+        self.end = None
 
     def __exit__(self, *args):
-        self.end = time.time()
-        self.elapsed += self.end - self.start
+        self.end = time.perf_counter()
+        self.last = self.end - self.start
+        self.total += self.last
+
+class PerformanceStatistics:
+    def __getattr__(self, name):
+        newly_constructed = PerformanceMeasurement()
+        setattr(self, name, newly_constructed)
+        return newly_constructed
+
+    def items(self):
+        return self.__dict__.items()
 
 def find_unary_factor_indices(model):
     flags = numpy.zeros(model.number_of_variables, dtype=bool)
