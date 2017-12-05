@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+
+import combilp
+import sys
+
+def main(argv):
+    ilp_mode, filename = argv[1:]
+
+    load_time = combilp.PerformanceMeasurement()
+    with load_time:
+        model = combilp.load_hdf5(filename)
+    print('time(load_model) = {:.2f}s'.format(load_time.total))
+
+    parameters = {
+        'threads': 1,
+    }
+
+    if ilp_mode in ('Cplex', 'CplexNonIterative', 'ToulBar2'):
+        cls = getattr(combilp.subsolvers.ilp, ilp_mode)
+    else:
+        raise NotImplementedError
+
+    timer = combilp.PerformanceMeasurement()
+    solver = cls(model, parameters)
+    solver.add_full_model()
+    with timer:
+        solver.solve()
+    print('solution = {}'.format(solver.upper_bound()))
+    print('time(ilp_solver_solve) = {:.2f}s'.format(timer.total))
+
+if __name__ == '__main__':
+    main(sys.argv)
