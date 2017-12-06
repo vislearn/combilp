@@ -3,10 +3,31 @@
 
 @import "{{ site.theme }}";
 
+img {
+  border: none;
+  box-shadow: none;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  -o-box-shadow: none;
+  -ms-box-shadow: none;
+}
+
 #main_content p {
-	text-align: justify;
+  text-align: justify;
 }
 
 #main_content .centered-image {
-	text-align: center;
+  text-align: center;
 }
+
+#footer_wrap footer .logos {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+
+  img {
+    height: 60px;
+  }
+}
+
+// vim: set ts=2 sts=2 sw=2 et:

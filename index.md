@@ -111,6 +111,4 @@ come from the reduced size of the ILP suproblem.
 [pdf-combilp]: https://hci.iwr.uni-heidelberg.de/vislearn/HTML/people/bogdan/publications/papers/savchynskyy-combilp-nips2013.pdf
 [pdf-dense-combilp]: https://hci.iwr.uni-heidelberg.de/vislearn/HTML/people/stefan_haller/pdf/aaai2018.pdf
 
-<script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
 <!-- vim: set ts=2 sts=2 sw=2 et tw=80 fo+=a spell spl=en: -->
