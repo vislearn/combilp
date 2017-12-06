@@ -24,13 +24,14 @@ therefore solve problems which were out of reach before.
 
 ## References
 
- 1. Savchynskyy, B., Kappes, J. H., Swoboda, P., & Schnörr, C. (2013). Global
-    MAP-optimality by shrinking the combinatorial search area with convex
-    relaxation. In Advances in Neural Information Processing Systems (pp.
-    1950-1958). [[pdf][pdf-combilp]]
- 2. Haller, S., Swoboda, P., & Savchynskyy, B. (2018). Exact MAP-Inference by
-    Confining Combinatorial Search with LP Relaxation. (To be published in AAAI
-    18.) [[pdf][pdf-dense-combilp]]
+ 1. *B. Savchynskyy, J. Kappes, P. Swoboda, C. Schnörr.*<br/>
+    **Global MAP-Optimality by Shrinking the Combinatorial Search Area with
+    Convex Relaxation.**<br/>
+    NIPS-2013. [[pdf][pdf-combilp]]
+ 2. *S. Haller, P. Swoboda and B. Savchynskyy.*<br/>
+    **Exact MAP-Inference by Confining Combinatorial Search with LP
+    Relaxation.**<br/>
+    Accepted to AAAI 2018. [[pdf][pdf-dense-combilp]]
 
 ## Examples and Experiments
 
