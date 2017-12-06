@@ -1,3 +1,6 @@
+---
+---
+
 ## About
 
 On this site we want to present our work on the energy minimization of graphical
