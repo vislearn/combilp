@@ -1,0 +1,12 @@
+---
+---
+
+@import "{{ site.theme }}";
+
+#main_content p {
+	text-align: justify;
+}
+
+#main_content .centered-image {
+	text-align: center;
+}
