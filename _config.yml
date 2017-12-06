@@ -1,2 +1,11 @@
-theme: jekyll-theme-slate
 title: CombiLP
+description: Exact MAP-Inference by Confining Combinatorial Search with LP Relaxation
+encoding: UTF-8
+theme: jekyll-theme-slate
+markdown: kramdown
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: "default"
