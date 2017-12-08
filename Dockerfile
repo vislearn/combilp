@@ -34,9 +34,10 @@ ENV CXXFLAGS=-I/usr/include/hdf5/serial/ \
     LDFLAGS=-L/usr/lib/x86_64-linux-gnu/hdf5/serial/ \
     PYTHONPATH=/home/user/code:/opt/cplex/cplex/python/3.5/x86-64_linux/ \
     PYTHONOPTIMIZE=TRUE \
-    LD_LIBRARY_PATH=/home/user/code/
-RUN cd code \
-    && cmake -GNinja -DCMAKE_BUILD_TYPE=Release . \
+    LD_LIBRARY_PATH=/home/user/build/
+RUN mkdir build \
+    && cd build \
+    && cmake -GNinja -DCMAKE_BUILD_TYPE=Release ../code \
     && ninja
 CMD ["bash", "-l"]
 
