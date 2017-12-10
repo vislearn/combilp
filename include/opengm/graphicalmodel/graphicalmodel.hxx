@@ -111,6 +111,8 @@ public:
    const FactorType& operator[](const IndexType) const;
    template<class ITERATOR>
       ValueType evaluate(ITERATOR) const;
+   template<class ITERATOR>
+         ValueType evaluate(ITERATOR,const std::vector<bool>& mask) const;
    /// \cond HIDDEN_SYMBOLS
    template<class ITERATOR>
       bool isValidIndexSequence(ITERATOR, ITERATOR) const;
@@ -469,6 +471,37 @@ GraphicalModel<T, OPERATOR, FUNCTION_TYPE_LIST, SPACE>::evaluate
          factor_state[i] = labels[factors_[j].variableIndex(i)];
       }
       OperatorType::op(factors_[j](factor_state.begin()), v);
+   }
+   return v;
+}
+
+/// \brief evaluate the modeled function for a given labeling
+/// \param labels iterator to the beginning of a sequence of label indices
+/// \param mask - defines an induced subgraph where summation of potentials is performed
+template<class T, class OPERATOR, class FUNCTION_TYPE_LIST, class SPACE>
+template<class ITERATOR>
+inline typename GraphicalModel<T, OPERATOR, FUNCTION_TYPE_LIST, SPACE>::ValueType
+GraphicalModel<T, OPERATOR, FUNCTION_TYPE_LIST, SPACE>::evaluate
+(
+   ITERATOR labels,
+   const std::vector<bool>& mask
+) const
+{
+   ValueType v;
+   std::vector<LabelType> factor_state(factorOrder()+1);
+   OperatorType::neutral(v);
+   for(size_t j = 0; j < factors_.size(); ++j) {
+      factor_state[0]=0;
+      bool inmask=true;
+      for(size_t i = 0; i < factors_[j].numberOfVariables(); ++i) {
+         if (! mask[factors_[j].variableIndex(i)]) {
+            inmask=false;
+            break;
+         }
+         factor_state[i] = labels[factors_[j].variableIndex(i)];
+      }
+      if (inmask==true)
+         OperatorType::op(factors_[j](factor_state.begin()), v);
    }
    return v;
 }

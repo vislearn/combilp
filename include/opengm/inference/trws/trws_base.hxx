@@ -152,6 +152,7 @@ _backwardFactors(gm.numberOfVariables())
  {
 	switch (gm[factorId].numberOfVariables())
 	{
+	 case 0:
 	 case 1: break;
 	 case 2:
 		 gm[factorId].variableIndices(varIDs.begin());

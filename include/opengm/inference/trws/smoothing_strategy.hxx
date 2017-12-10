@@ -629,6 +629,17 @@ public:
 	  ReparametrizerType * getReparametrizer(const typename ReparametrizerType::Parameter& params=typename ReparametrizerType::Parameter())//const //TODO: make it constant
 	   {return new ReparametrizerType(_storage,_maxsumsolver.getFactorProperties(),params);}
 
+
+	  void getReparametrization(LPReparametrisationStorage<GraphicalModelType> &repa) {
+	    ReparametrizerType reparametrizer(_storage, _maxsumsolver.getFactorProperties());
+	    reparametrizer.reparametrize();
+	    repa = reparametrizer.Reparametrization();
+	  }
+
+	  void setReparametrization(const LPReparametrisationStorage<GraphicalModelType> &repa) {
+	    throw std::runtime_error("Not implemented");
+	  }
+
 	  InferenceTermination marginal(const IndexType varID, IndependentFactorType& out) //const
 	  {
 		  _marginalsTemp.resize(_storage.numberOfLabels(varID));

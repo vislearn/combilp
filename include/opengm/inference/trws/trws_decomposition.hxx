@@ -322,7 +322,7 @@ void Decomposition<GM>::_CreateNodeList(const GM & gm,NodeList* pnodeList)
 		if (gm[factorId].numberOfVariables()>2)
 			throw std::runtime_error("CreateEdgeList(): Only factors up to order 2 are supported!");
 
-		if (gm[factorId].numberOfVariables()==1) continue;
+		if (gm[factorId].numberOfVariables()<=1) continue;
 		std::vector<IndexType> varIndices(gm[factorId].variableIndicesBegin(),gm[factorId].variableIndicesEnd());
 		if (varIndices[0] < varIndices[1])
 		 varList[varIndices[0]].push_back(std::make_pair(factorId,varIndices[1]));

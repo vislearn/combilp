@@ -78,8 +78,9 @@ namespace canonical_view_internal {
 		// We extend the type list of the old model and add some more
 		// functions.
 		typedef ConstantFunction<ValType, IndType, LabType> ConstFunType;
+		typedef ExplicitFunction<ValType, IndType, LabType> ExplFunType;
 		typedef AccumulatedViewFunction<GM> AccViewType;
-		typedef typename meta::TypeListGenerator<ConstFunType, AccViewType>::type NewTypeList;
+		typedef typename meta::TypeListGenerator<ConstFunType, ExplFunType, AccViewType>::type NewTypeList;
 
 	public:
 		typedef GraphicalModel<
@@ -263,7 +264,7 @@ public:
 			const typename GM::FactorType &f = gm[i];
 			if (f.numberOfVariables() == 1) {
 				unaryFactors[f.variableIndex(0)].push_back(&f);
-			} else {
+			} else if (f.numberOfVariables() != 0) {
 				std::vector<IndexType> vars(f.variableIndicesBegin(), f.variableIndicesEnd());
 				otherFactors[vars].push_back(&f);
 			}

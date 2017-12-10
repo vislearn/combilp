@@ -40,6 +40,7 @@ namespace opengm {
     typedef DiscreteSpace<IndexType, LabelType> SpaceType;
 
     typedef typename meta::TypeListGenerator< ViewFixVariablesFunction<GM>,
+					      ViewBoundFunction<GM>,
 					      ViewFunction<GM>,
 					      ConstantFunction<ValueType, IndexType, LabelType>,
 					      ExplicitFunction<ValueType, IndexType, LabelType>

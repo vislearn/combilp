@@ -158,6 +158,16 @@ public:
   ReparametrizerType * getReparametrizer(const typename ReparametrizerType::Parameter& params=typename ReparametrizerType::Parameter())//const //TODO: make it constant
   {return new ReparametrizerType(_storage,_solver.getFactorProperties(),params);}
 
+  void setReparametrization(const LPReparametrisationStorage<GraphicalModelType> &repa) {
+    throw std::runtime_error("Not implemented");
+  }
+
+  void getReparametrization(LPReparametrisationStorage<GraphicalModelType> &repa) {
+    ReparametrizerType reparametrizer(_storage, _solver.getFactorProperties());
+    reparametrizer.reparametrize();
+    repa = reparametrizer.Reparametrization();
+  }
+
   void getDDVector(DDVectorType* pddvector)const{_storage.getDDVector(pddvector);}
 
   private:

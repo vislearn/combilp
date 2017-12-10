@@ -74,7 +74,7 @@ namespace opengm {
          typename GM::ValueType bound() const;
          typename GM::ValueType value() const;
 
-         typedef LPReparametrizer<GM,opengm::Minimizer> ReparametrizerType;
+         typedef LPReparametrizer<GM> ReparametrizerType;
          ReparametrizerType * getReparametrizer(const typename ReparametrizerType::Parameter& params=typename ReparametrizerType::Parameter())const;
 
       protected:

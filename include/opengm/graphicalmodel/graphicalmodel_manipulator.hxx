@@ -11,6 +11,7 @@
 #include "opengm/graphicalmodel/space/discretespace.hxx"
 #include "opengm/functions/view.hxx"
 #include "opengm/functions/view_fix_variables_function.hxx"
+#include "opengm/functions/view_bound_function.hxx"
 #include "opengm/functions/constant.hxx"
 #include <opengm/utilities/metaprogramming.hxx>
 
@@ -54,16 +55,18 @@ namespace opengm {
       typedef typename GM::ValueType         ValueType;
 
       enum ManipulationMode {
-         FIX, //fix variables in factors that are fixed.
-         DROP //drop factors that include fixed variables.
+         FIX,   //fix variables in factors that are fixed.
+         DROP,  //drop factors that include fixed variables.
+         BOUND, //like drop, but min-marginals are computed for factors on boundary
       };
 
       typedef typename opengm::DiscreteSpace<IndexType, LabelType> MSpaceType;
       typedef typename meta::TypeListGenerator< 
-	ViewFixVariablesFunction<GM>, 
-	ViewFunction<GM>, 
-	ConstantFunction<ValueType, IndexType, LabelType>,
-	ExplicitFunction<ValueType, IndexType, LabelType> >::type MFunctionTypeList;
+         ViewFixVariablesFunction<GM>, 
+         ViewBoundFunction<GM>,
+         ViewFunction<GM>, 
+         ConstantFunction<ValueType, IndexType, LabelType>,
+         ExplicitFunction<ValueType, IndexType, LabelType> >::type MFunctionTypeList;
       typedef GraphicalModel<ValueType, typename GM::OperatorType, MFunctionTypeList, MSpaceType> MGM;
 
       GraphicalModelManipulator(const GM& gm, const ManipulationMode mode = FIX);
@@ -82,6 +85,10 @@ namespace opengm {
       void modifiedState2OriginalState(const std::vector<LabelType>&, std::vector<LabelType>&) const;
       void modifiedSubStates2OriginalState(const std::vector<std::vector<LabelType> >&, std::vector<LabelType>&) const;
       bool isLocked() const;
+      IndexType modifiedVariableIndex(IndexType var) const;
+      std::pair<IndexType, IndexType> modifiedSubVariableIndex(IndexType var) const;
+      template<class OUTPUT_IT> void originalVariableIndices(OUTPUT_IT begin, OUTPUT_IT end) const;
+      template<class OUTPUT_IT> void originalSubVariableIndices(size_t sub, OUTPUT_IT begin, OUTPUT_IT end) const;
 
       //Manipulation
       void fixVariable(const typename GM::IndexType, const typename GM::LabelType);
@@ -110,6 +117,7 @@ namespace opengm {
       bool validSubModels_;                      // true if themodified submodels are valid            
       std::vector<MGM> submodels_;               // modified submodels           
       std::vector<IndexType> var2subProblem_;    // subproblem of variable (for fixed variables undefined)
+      std::vector<IndexType> varMap_;
 
       //Tentacles
      std::vector<IndexType> tentacleRoots_;                                                    // Root-node of the tentacles 
@@ -293,6 +301,49 @@ namespace opengm {
         OPENGM_ASSERT( l == conf[tentacleRoots_[i]] );
       } 
    }
+
+   template<class GM>
+   typename GraphicalModelManipulator<GM>::IndexType GraphicalModelManipulator<GM>::modifiedVariableIndex(IndexType var) const
+   {
+      OPENGM_ASSERT(isLocked());
+      OPENGM_ASSERT(!fixVariable_[var]);
+
+      return varMap_[var];
+   }
+
+   template<class GM>
+   std::pair<typename GraphicalModelManipulator<GM>::IndexType, typename GraphicalModelManipulator<GM>::IndexType>
+   GraphicalModelManipulator<GM>::modifiedSubVariableIndex(IndexType var) const
+   {
+      OPENGM_ASSERT(isLocked());
+      OPENGM_ASSERT(!fixVariable_[var]);
+
+      return std::make_pair(var2subProblem_[var], varMap_[var]);
+   }
+
+   template<class GM>
+   template<class OUTPUT_IT>
+   void GraphicalModelManipulator<GM>::originalVariableIndices(OUTPUT_IT begin, OUTPUT_IT end) const
+   {
+      for (IndexType var = 0; var < gm_.numberOfVariables(); ++var) {
+         if (!fixVariable_[var]) {
+            OPENGM_ASSERT(begin + varMap_[var] < end);
+            *(begin + varMap_[var]) = var;
+         }
+      }
+   }
+
+   template<class GM>
+   template<class OUTPUT_IT>
+   void GraphicalModelManipulator<GM>::originalSubVariableIndices(size_t sub, OUTPUT_IT begin, OUTPUT_IT end) const
+   {
+      for (IndexType var = 0; var < gm_.numberOfVariables(); ++var) {
+         if (!fixVariable_[var] && var2subProblem_[var] == sub) {
+            OPENGM_ASSERT(begin + varMap_[var] < end);
+            *(begin + varMap_[var]) = var;
+         }
+      }
+   }
  
 /// \brief build modified model
    template<class GM>
@@ -358,6 +409,17 @@ namespace opengm {
                const ViewFunction<GM> func(gm_[f]);
                mgm_.addFactor(mgm_.addFunction(func),MVars.begin(), MVars.end());
             }
+         } else if(mode_=BOUND){
+            if(fixedVars.size()==0){//non fixed
+               const ViewFunction<GM> func(gm_[f]);
+               mgm_.addFactor(mgm_.addFunction(func),MVars.begin(), MVars.end());
+            }else if(fixedVars.size()<gm_[f].numberOfVariables()){
+               opengm::FastSequence<IndexType> fixedVars2(fixedVars.size());
+               for (IndexType i = 0; i <fixedVars.size(); ++i)
+                  fixedVars2[i] = fixedVars[i].position_;
+               const ViewBoundFunction<GM> func(gm_[f], fixedVars2.begin(), fixedVars2.end());
+               mgm_.addFactor(mgm_.addFunction(func),MVars.begin(), MVars.end());
+            }
          } else{
             throw std::runtime_error("Unsupported manipulation mode");
          } 
@@ -378,6 +440,8 @@ namespace opengm {
          } 
          //std::cout << "* numvars : " << mgm_.numberOfVariables() <<std::endl;
       }  
+
+      varMap_ = varMap;
    }
 
 /// \brief build modified sub-models 
@@ -462,6 +526,17 @@ namespace opengm {
                const ViewFunction<GM> func(gm_[f]);
                submodels_[subproblem].addFactor(submodels_[subproblem].addFunction(func),MVars.begin(), MVars.end());    
             }
+         } else if(mode_=BOUND){
+            if(fixedVars.size()==0){//non fixed
+               const ViewFunction<GM> func(gm_[f]);
+               submodels_[subproblem].addFactor(submodels_[subproblem].addFunction(func),MVars.begin(), MVars.end());
+            }else if(fixedVars.size()<gm_[f].numberOfVariables()){
+               opengm::FastSequence<IndexType> fixedVars2(fixedVars.size());
+               for (IndexType i = 0; i <fixedVars.size(); ++i)
+                  fixedVars2[i] = fixedVars[i].position_;
+               const ViewBoundFunction<GM> func(gm_[f], fixedVars2.begin(), fixedVars2.end());
+               submodels_[subproblem].addFactor(submodels_[subproblem].addFunction(func),MVars.begin(), MVars.end());
+            }
          }else{
             throw std::runtime_error("Unsupported manipulation mode"); 
          }
@@ -481,6 +556,8 @@ namespace opengm {
          }  
       }
       //std::cout << " numvars : " << submodels_[0].numberOfVariables() <<std::endl;
+
+      varMap_ = varMap;
    }
 
 //////////////////////
