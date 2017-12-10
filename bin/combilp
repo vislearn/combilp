@@ -13,7 +13,7 @@ def main(argv):
 
     parameters = {
         'lp': { 'max_iterations': 2000 },
-        'ilp': { 'threads': 1 },
+        'ilp': { 'threads': 1, 'vac': False },
     }
 
     if lp_mode in ('TRWS', 'SRMP'):

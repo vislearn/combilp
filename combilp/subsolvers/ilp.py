@@ -245,6 +245,7 @@ class ToulBar2(NonIterativeSolver):
         DEFAULT_PARAMETERS = {
             'scaling_factor': 1e6,
             'warmstart': None,
+            'vac': True,
         }
 
         def __init__(self, model, parameters=None):
@@ -253,7 +254,7 @@ class ToulBar2(NonIterativeSolver):
             self._init_library()
 
             min_cost, max_cost = c_int64(), c_int64()
-            self._initialize(min_cost, max_cost)
+            self._initialize(self.parameters['vac'], min_cost, max_cost)
             self.min_cost, self.max_cost = min_cost.value, max_cost.value
 
         def __del__(self):
@@ -265,7 +266,7 @@ class ToulBar2(NonIterativeSolver):
             self._lib = ctypes.cdll.LoadLibrary('libcombilp_toulbar2_stub.so')
 
             self._initialize = self._lib.combilp_toulbar2_stub_initialize
-            self._initialize.argtypes = [POINTER(c_int64), POINTER(c_int64)]
+            self._initialize.argtypes = [c_bool, POINTER(c_int64), POINTER(c_int64)]
 
             self._create = self._lib.combilp_toulbar2_stub_create
             self._create.argtypes = [c_int32, ndpointer(dtype=c_int32)]

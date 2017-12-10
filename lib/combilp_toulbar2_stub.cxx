@@ -36,6 +36,7 @@ extern "C" {
 void
 combilp_toulbar2_stub_initialize
 (
+	bool enable_vac,
 	ValueType *out_min_cost,
 	ValueType *out_max_cost
 )
@@ -43,7 +44,7 @@ combilp_toulbar2_stub_initialize
 	tb2init();
 	ToulBar2::uai = 1;
 	ToulBar2::bayesian = true;
-	ToulBar2::vac = 0;
+	ToulBar2::vac = enable_vac ? 1 : 0;
 	ToulBar2::vacValueHeuristic = true;
 	ToulBar2::hbfs = 1;
 	ToulBar2::hbfsGlobalLimit = 10000;
