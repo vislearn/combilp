@@ -62,6 +62,9 @@ class ILPSolver(SubSolver):
     def lower_bound(self):
         return self.upper_bound()
 
+    def prepare(self):
+        pass
+
 class Cplex(ILPSolver):
 
     DEFAULT_PARAMETERS = {
@@ -187,7 +190,7 @@ class NonIterativeSolver(ILPSolver):
     def add_factor(self, factor):
         self.factors.append(factor)
 
-    def solve(self):
+    def prepare(self):
         print('Rebuilding full model...')
         self.variable_map = dict((x, i) for i, x in enumerate(self.variables))
         model = Model([self.model.number_of_labels(x) for x in self.variables])
@@ -199,6 +202,8 @@ class NonIterativeSolver(ILPSolver):
         print('Reconstructing new solver...')
         self.solver = self._SOLVER(model, self.parameters)
         self.solver.add_full_model()
+
+    def solve(self):
         return self.solver.solve()
 
     def upper_bound(self):

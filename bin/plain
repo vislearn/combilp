@@ -23,6 +23,7 @@ def main(argv):
     timer = combilp.PerformanceMeasurement()
     solver = cls(model, parameters)
     solver.add_full_model()
+    solver.prepare()
     with timer:
         solver.solve()
     print('solution = {}'.format(solver.upper_bound()))

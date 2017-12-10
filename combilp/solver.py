@@ -120,6 +120,8 @@ class CombiLP(object):
                     self.mismatches.append(factor)
 
     def run_ilp_iteration(self):
+        with self.timers.ilp_solver_prepare:
+            self.ilp_solver.prepare()
         with self.timers.ilp_solver_solve:
             self.ilp_solver.solve()
         print('elapsed ILP time: {:.2f}s'.format(self.timers.ilp_solver_solve.last))
