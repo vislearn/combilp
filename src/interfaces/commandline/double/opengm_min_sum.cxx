@@ -1,4 +1,5 @@
 #include <iostream>
+#include <limits>
 
 #include <opengm/graphicalmodel/graphicalmodel.hxx>
 #include <opengm/graphicalmodel/graphicalmodel_hdf5.hxx>
@@ -140,6 +141,9 @@ int main(int argc, char** argv) {
       return 1;
    }
 
+   std::cout.precision(std::numeric_limits<double>::max_digits10);
+   std::cerr.precision(std::numeric_limits<double>::max_digits10);
+
    typedef double ValueType;
    typedef size_t IndexType;
    typedef size_t LabelType;
@@ -269,6 +273,8 @@ int main(int argc, char** argv) {
 #if  defined(WITH_VIGRA) && ( defined(WITH_QPBO) || defined(WITH_CPLEX) || defined(WITH_BLOSSOM5) && defined(WITH_PLANARITY) )
       interface::IntersectionBasedCaller<InterfaceType, GmType, AccumulatorType>,
 #endif      
+      interface::CombiLPCaller<InterfaceType, GmType, AccumulatorType>,
+      interface::SRMPCaller<InterfaceType, GmType, AccumulatorType>,
       interface::ToulBar2Caller<InterfaceType, GmType, AccumulatorType>
    >::type ExternalILPInferenceTypeList;
 
