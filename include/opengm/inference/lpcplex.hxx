@@ -63,6 +63,8 @@ public:
    class Parameter {
    public:
       bool   integerConstraint_;// ILP=true, 1order-LP=false
+      bool   checkOptimality_;
+      bool   normalizePotential_;
       int    numberOfThreads_; // number of threads (0=autosect)
       bool   verbose_;         // switch on/off verbode mode 
       double cutUp_;           // upper cutoff
@@ -141,6 +143,8 @@ public:
       )
       :  numberOfThreads_(numberOfThreads), 
          //integerConstraint_(false), 
+         checkOptimality_(true),
+         normalizePotential_(true),
          verbose_(false),
          workMem_(128.0),
          treeMemoryLimit_(1e+75),
@@ -209,6 +213,7 @@ public:
    void factorVariable(const size_t, IndependentFactorType& out) const;
    typename GM::ValueType bound() const; 
    typename GM::ValueType value() const;
+   bool isOptimal() const;
    void setStartingPoint( typename std::vector<LabelType>::const_iterator );
 
 
@@ -226,6 +231,7 @@ private:
    std::vector<size_t> idFactorsBegin_; 
    std::vector<std::vector<size_t> > unaryFactors_;
    bool inferenceStarted_;
+   std::vector<bool> should_be_disabled_;
     
    IloEnv env_;
    IloModel model_;
@@ -305,52 +311,96 @@ LPCplex<GM, ACC>::LPCplex
    }
    x_.add(IloNumVarArray(env_, numberOfFactorElements, 0, 1));
    IloNumArray obj(env_, numberOfElements);
+   should_be_disabled_.assign(numberOfElements, false);
+
+   std::vector<ValueType> norms;
+   if (parameter_.normalizePotential_) {
+      std::cout << "Normalizing potentials." << std::endl;
+      norms.resize(gm_.numberOfFactors());
+      for (IndexType i = 0; i < gm_.numberOfFactors(); ++i) {
+         ShapeWalker<typename GM::FactorType::ShapeIteratorType> walker(gm_[i].shapeBegin(), gm_[i].numberOfVariables());
+         norms[i] = gm_[i](walker.coordinateTuple().begin());
+         ++walker;
+         for (IndexType j = 1; j < gm_[i].size(); ++j, ++walker) {
+            norms[i] = std::min(norms[i], gm_[i](walker.coordinateTuple().begin()));
+         }
+         constValue_ += norms[i];
+      }
+   }
 
    for(size_t node = 0; node < gm_.numberOfVariables(); ++node) {
+      IloNumVarArray set(env_);
       for(size_t i = 0; i < gm_.numberOfLabels(node); ++i) {
          ValueType t = 0;
          for(size_t n=0; n<unaryFactors_[node].size();++n) {
-            t += gm_[unaryFactors_[node][n]](&i); 
+            t += gm_[unaryFactors_[node][n]](&i) - (parameter_.normalizePotential_ ? norms[unaryFactors_[node][n]] : 0);
          }
          OPENGM_ASSERT_OP(idNodesBegin_[node]+i,<,numberOfElements);
          obj[idNodesBegin_[node]+i] = t;
-      } 
+         set.add(x_[idNodesBegin_[node]+i]);
+      }
    }
    for(size_t f = 0; f < gm_.numberOfFactors(); ++f) {
       if(gm_[f].numberOfVariables() == 2) {
+         IloNumVarArray set(env_);
          size_t index[2];
          size_t counter = idFactorsBegin_[f];
-         for(index[1]=0; index[1]<gm_[f].numberOfLabels(1);++index[1])
-            for(index[0]=0; index[0]<gm_[f].numberOfLabels(0);++index[0])
-               obj[counter++] = gm_[f](index);
+         for(index[1]=0; index[1]<gm_[f].numberOfLabels(1);++index[1]) {
+            for(index[0]=0; index[0]<gm_[f].numberOfLabels(0);++index[0]) {
+               set.add(x_[counter]);
+               obj[counter++] = gm_[f](index) - (parameter_.normalizePotential_ ? norms[f] : 0);
+            }
+         }
       }
       else if(gm_[f].numberOfVariables() == 3) {
+         IloNumVarArray set(env_);
          size_t index[3];
          size_t counter = idFactorsBegin_[f] ;
-         for(index[2]=0; index[2]<gm_[f].numberOfLabels(2);++index[2])
-            for(index[1]=0; index[1]<gm_[f].numberOfLabels(1);++index[1])
-               for(index[0]=0; index[0]<gm_[f].numberOfLabels(0);++index[0])
-                  obj[counter++] = gm_[f](index);
+         for(index[2]=0; index[2]<gm_[f].numberOfLabels(2);++index[2]) {
+            for(index[1]=0; index[1]<gm_[f].numberOfLabels(1);++index[1]) {
+               for(index[0]=0; index[0]<gm_[f].numberOfLabels(0);++index[0]) {
+                  set.add(x_[counter]);
+                  obj[counter++] = gm_[f](index) - (parameter_.normalizePotential_ ? norms[f] : 0);
+               }
+            }
+         }
       } 
       else if(gm_[f].numberOfVariables() == 4) {
+         IloNumVarArray set(env_);
          size_t index[4];
          size_t counter = idFactorsBegin_[f];
-         for(index[3]=0; index[3]<gm_[f].numberOfLabels(3);++index[3])
-            for(index[2]=0; index[2]<gm_[f].numberOfLabels(2);++index[2])
-               for(index[1]=0; index[1]<gm_[f].numberOfLabels(1);++index[1])
-                  for(index[0]=0; index[0]<gm_[f].numberOfLabels(0);++index[0])
-                     obj[counter++] = gm_[f](index);
+         for(index[3]=0; index[3]<gm_[f].numberOfLabels(3);++index[3]) {
+            for(index[2]=0; index[2]<gm_[f].numberOfLabels(2);++index[2]) {
+               for(index[1]=0; index[1]<gm_[f].numberOfLabels(1);++index[1]) {
+                  for(index[0]=0; index[0]<gm_[f].numberOfLabels(0);++index[0]) {
+                     set.add(x_[counter]);
+                     obj[counter++] = gm_[f](index) - (parameter_.normalizePotential_ ? norms[f] : 0);
+                  }
+               }
+            }
+         }
       }
       else if(gm_[f].numberOfVariables() > 4) {
+         IloNumVarArray set(env_);
          size_t counter = idFactorsBegin_[f];
          std::vector<size_t> coordinate(gm_[f].numberOfVariables());   
          marray::Marray<bool> temp(gm_[f].shapeBegin(), gm_[f].shapeEnd());
          for(marray::Marray<bool>::iterator mit = temp.begin(); mit != temp.end(); ++mit) {
             mit.coordinate(coordinate.begin());
-            obj[counter++] = gm_[f](coordinate.begin());
+            set.add(x_[counter]);
+            obj[counter++] = gm_[f](coordinate.begin()) - (parameter_.normalizePotential_ ? norms[f] : 0);
          }
       }
    } 
+   for (size_t i = 0; i < numberOfElements; ++i) {
+      if (obj[i] == IloInfinity) {
+         obj[i] = 0;
+         x_[i].asVariable().setUB(0);
+      } else if (obj[i] == -IloInfinity) {
+         obj[i] = 0;
+         x_[i].asVariable().setLB(1);
+      }
+   }
    obj_.setLinearCoefs(x_, obj);
    // set constraints
    size_t constraintCounter = 0;
@@ -555,13 +605,20 @@ LPCplex<GM, ACC>::infer
       //cplex_.setParam(IloCplex::MIRCuts, parameter_.MIRCutLevel_);
   
       // solve problem
+      bool succeeded = cplex_.solve();
 
-      if(!cplex_.solve()) {
-         std::cout << "failed to optimize. " <<cplex_.getStatus() << std::endl;
-         inferenceStarted_ = 0;
+      if(parameter_.checkOptimality_ && cplex_.getStatus() != IloAlgorithm::Optimal)
+         succeeded = false;
+
+      if(!succeeded) {
+         std::cout << "LPCplex: Failed to optimize, status = " << cplex_.getStatus() << std::endl;
          return UNKNOWN;
       } 
       cplex_.getValues(sol_, x_);
+
+      for (size_t i = 0; i < should_be_disabled_.size(); ++i)
+         if (should_be_disabled_[i] && sol_[i] >= .5)
+            throw RuntimeError("should_be_disabled_");
    }
    catch(IloCplex::Exception e) {
       std::cout << "caught CPLEX exception: " << e << std::endl;
@@ -681,7 +738,10 @@ typename GM::ValueType LPCplex<GM, ACC>::value() const {
 template<class GM, class ACC>
 typename GM::ValueType LPCplex<GM, ACC>::bound() const { 
    if(inferenceStarted_) {
-      if(parameter_.integerConstraint_) {
+      if (isOptimal()) {
+         return value();
+      }
+      else if(parameter_.integerConstraint_) {
          return cplex_.getBestObjValue()+constValue_;
       }
       else{
@@ -690,6 +750,15 @@ typename GM::ValueType LPCplex<GM, ACC>::bound() const {
    }
    else{
       return ACC::template ineutral<ValueType>();
+   }
+}
+
+template<class GM, class ACC>
+bool LPCplex<GM, ACC>::isOptimal() const {
+   if (inferenceStarted_) {
+      return cplex_.getStatus() == IloAlgorithm::Optimal;
+   } else {
+      return false;
    }
 }
 
