@@ -1,0 +1,188 @@
+diff -Nurp a/include/srmp/edge_iterator.h b/include/srmp/edge_iterator.h
+--- a/include/srmp/edge_iterator.h	1970-01-01 01:00:00.000000000 +0100
++++ b/include/srmp/edge_iterator.h	2017-05-24 17:47:23.632789719 +0200
+@@ -0,0 +1,76 @@
++#ifndef SRMP_EDGE_ITERATOR_H
++#define SRMP_EDGE_ITERATOR_H
++
++#include <functional>
++
++#include <srmp/SRMP.h>
++
++namespace srmpLib {
++
++class EdgeIterator {
++public:
++	struct Edge {
++		std::vector<int> alpha;
++		std::vector<int> beta;
++		double *message;
++		size_t message_size;
++
++		double* message_begin() const { return message; }
++		double* message_end() const { return message + message_size; }
++	};
++
++	EdgeIterator(const Energy *energy)
++	: energy_(energy)
++	{
++		edge_ = energy_->edges->ScanFirst(iterator_);
++	}
++
++	void operator++()
++	{
++		edge_ = energy_->edges->ScanNext(iterator_);
++	}
++
++	Edge* operator->()
++	{
++		convert_factor(edge_->A, &current_.alpha);
++		convert_factor(edge_->B, &current_.beta);
++		current_.message = edge_->m;
++		current_.message_size = edge_->B->K;
++		return &current_;
++	}
++
++	Edge& operator*()
++	{
++		return *this->operator->();
++	}
++
++	bool valid() const
++	{
++		return edge_ != NULL;
++	}
++
++private:
++	const Energy *energy_;
++	const Energy::Edge * edge_;
++	Block<Energy::Edge>::iterator iterator_;
++	Edge current_;
++
++	void convert_factor(const Energy::Factor *factor, std::vector<int> *out) const
++	{
++		// Note that the differentation of Factor and NonSingletonFactor hits
++		// us here, but this functions seems to handle both cases correctly.
++		// Unfortunately it does not obey const correctness... Also the
++		// function takes a REFERENCE TO A POINTER, so we have to store it in
++		// an rvalue. :(
++		Energy::Factor *tmp = const_cast<Energy::Factor*>(factor);
++
++		Energy::Node **nodes = energy_->GetSortedNodesPtr(tmp);
++		out->resize(factor->arity);
++		for (int i = 0; i < factor->arity; ++i)
++			(*out)[i] = nodes[i] - energy_->nodes;
++	}
++};
++
++}
++
++#endif
+diff -Nurp a/include/srmp/SRMP.h b/include/srmp/SRMP.h
+--- a/include/srmp/SRMP.h	2017-06-08 13:50:59.779170763 +0200
++++ b/include/srmp/SRMP.h	2017-05-24 16:48:45.954301056 +0200
+@@ -68,7 +68,7 @@ public:
+ 	FactorId AddUnaryFactor(NodeId i, double* costs);
+ 	// 'costs' is an array of size GetK(i)*GetK(j), with cost(xi,xj)=costs[GetK(j)*xi + xj].
+ 	// It is copied into internal memory
+-	FactorId AddPairwiseFactor(NodeId i, NodeId j, double* costs);
++	FactorId AddPairwiseFactor(NodeId i, NodeId j, double* costs, unsigned flags = 0);
+ 
+ 	// Custom factors and factors of arbitrary arity.
+ 	//
+@@ -80,7 +80,7 @@ public:
+ 	//
+ 	// Use 'type' for custom factor types; see examples in PottsType.h, PatternType.h and SharedPairwiseType.h.
+ 	// The meaning of pointer 'costs' may be different for custom types (and the same for 'flags')
+-	FactorId AddFactor(int arity, NodeId* node_indexes, double* costs, FactorType* type = NULL/*, unsigned flags = 0*/);
++	FactorId AddFactor(int arity, NodeId* node_indexes, double* costs, FactorType* type = NULL, unsigned flags = 0);
+ 
+ 	int GetNodeNum() const { return node_num; }
+ 	int GetK(NodeId i) const { return nodes[i].K; }
+@@ -127,6 +127,7 @@ public:
+ 		double TRWS_weighting; // in [0,1], 1 corresponds to TRW-S (for pairwise energies)
+ 	};
+ 
++	void InitEdges(); // allocates messages and calls FactorType::InitEdge
+ 	double Solve(Options& options);
+ 	int GetSolution(NodeId i) const { return nodes[i].solution_best; } // can be called after Solve()
+ 
+@@ -327,6 +328,8 @@ public:
+ 		virtual bool PrepareFactor(NonSingletonFactor* A) = 0;
+ 	};
+ 
++	friend class EdgeIterator;
++
+ 
+ 
+ 
+@@ -402,7 +405,6 @@ private:
+ 	/////////////////////////////////////////////////////////
+ 	/////////////////////////////////////////////////////////
+ 
+-	void InitEdges(); // allocates messages and calls FactorType::InitEdge
+ 
+ 	// InitXXX function return the initial value of the lower bound
+ 	double InitSRMP(Sequence& seq, Options& options);
+diff -Nurp a/src/Algs/energy.cpp b/src/Algs/energy.cpp
+--- a/src/Algs/energy.cpp	2017-06-08 13:50:59.779170763 +0200
++++ b/src/Algs/energy.cpp	2017-05-24 12:21:17.394413954 +0200
+@@ -75,13 +75,13 @@ Energy::FactorId Energy::AddUnaryFactor(
+ 	return i;
+ }
+ 
+-Energy::FactorId Energy::AddPairwiseFactor(NodeId _i, NodeId _j, double* costs)
++Energy::FactorId Energy::AddPairwiseFactor(NodeId _i, NodeId _j, double* costs, unsigned flags)
+ {
+ 	NodeId node_indexes[2] = { _i, _j };
+ 	return AddFactor(2, node_indexes, costs);
+ }
+ 
+-Energy::FactorId Energy::AddFactor(int arity, NodeId* node_indexes, double* costs, FactorType* type/*, unsigned flags*/)
++Energy::FactorId Energy::AddFactor(int arity, NodeId* node_indexes, double* costs, FactorType* type, unsigned flags)
+ {
+ 	if (arity == 1) return AddUnaryFactor(node_indexes[0], costs);
+ 
+@@ -110,7 +110,7 @@ Energy::FactorId Energy::AddFactor(int a
+ 
+ 	if (arity_max < arity) arity_max = arity;
+ 
+-	InitFactor(A, costs, type);
++	InitFactor(A, costs, type, flags);
+ 
+ 	return A;
+ }
+diff -Nurp a/src/Algs/SRMP.cpp b/src/Algs/SRMP.cpp
+--- a/src/Algs/SRMP.cpp	2017-06-08 13:50:59.779170763 +0200
++++ b/src/Algs/SRMP.cpp	2017-05-24 16:48:20.687959760 +0200
+@@ -176,6 +176,19 @@ double Energy::InitSRMP(Sequence& seq, O
+ 
+ 		if (A->weight_forward + w_forward_in == 0) A->weight_forward = 1;
+ 		if (A->weight_backward + w_backward_in == 0) A->weight_backward = 1;
++
++		++A->weight_forward;
++		++A->weight_backward;
++
++		/*
++		printf("Factor "); PrintFactor(A); printf("\n");
++		printf("f: fw=%i bw=%i\n", A->weight_forward, A->weight_backward);
++		for (e = A->first_in; e; e = e->next_in) {
++			printf("e ");
++			PrintEdge(e);
++			printf(": fw=%i bw=%i\n", e->weight_forward, e->weight_backward);
++		}
++		*/
+ 	}
+ 
+ 	return LB_init;
+@@ -382,8 +395,8 @@ double Energy::Solve(Options& options)
+ 
+ 	double time_start = get_time();
+ 
+-	if (!edges) SetFullEdges();
+-	InitEdges();
++	//if (!edges) SetFullEdges();
++	//InitEdges();
+ 
+ 	double LB;
+ 

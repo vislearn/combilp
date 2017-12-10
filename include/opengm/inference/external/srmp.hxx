@@ -6,8 +6,10 @@
 #include <opengm/operations/minimizer.hxx>
 #include <opengm/inference/visitors/visitors.hxx>
 #include <opengm/utilities/indexing.hxx>
+#include <opengm/inference/auxiliary/lp_reparametrization.hxx>
 
 #include <srmp/SRMP.h>
+#include <srmp/edge_iterator.h>
 #include <srmp/FactorTypes/PottsType.h>
 #include <srmp/FactorTypes/GeneralType.h>
 
@@ -67,6 +69,8 @@ public:
    InferenceTermination arg(std::vector<LabelType>& arg, const size_t& n = 1) const;
    typename GM::ValueType bound() const;
    typename GM::ValueType value() const;
+   void getReparametrization(LPReparametrisationStorage<GraphicalModelType> &repa) const;
+   void setReparametrization(const LPReparametrisationStorage<GraphicalModelType> &repa);
 private:
    const GraphicalModelType& gm_;
    Parameter parameter_;
@@ -80,7 +84,10 @@ private:
 
    std::vector<srmpLib::PottsFactorType*> pottsFactorList_; // list of created potts functions which must be deleted when ~SRMP() is called
    std::vector<srmpLib::GeneralFactorType*> generalFactorList_; // list of created general functions which must be deleted when ~SRMP() is called
+   std::map<std::pair<UInt8Type, IndexType>, double*> valueCache_;
 
+
+   double* allocateValues(const IndexType FactorID);
    void addUnaryFactor(const IndexType FactorID);
    void addPairwiseFactor(const IndexType FactorID);
    void addPottsFactor(const IndexType FactorID);
@@ -116,15 +123,19 @@ inline SRMP<GM>::SRMP(const GraphicalModelType& gm, const Parameter para)
          // add unary factor
          addUnaryFactor(i);
       } else if(gm_[i].numberOfVariables() == 2) {
+#if 0
          if(gm_[i].numberOfLabels(0) == gm_[i].numberOfLabels(1) && gm_[i].isPotts()) {
             // add potts factor
             // srmp potts type does not support potts functions with more than
             // two variables or with different number of labels
             addPottsFactor(i);
          } else {
+#endif
             // add pairwise factor
             addPairwiseFactor(i);
+#if 0
          }
+#endif
       } else {
          // general factor
          // TODO srmp provides other function types which can be used instead of general type for some factors (SharedPairwiseType, PatternType, PairwiseDualType)
@@ -146,6 +157,15 @@ inline SRMP<GM>::SRMP(const GraphicalModelType& gm, const Parameter para)
    // set initial value and lower bound
    AccumulationType::neutral(value_);
    AccumulationType::ineutral(lowerBound_);
+
+   if (parameter_.BLPRelaxation_) {
+      srmpSolver_.SetMinimalEdges();
+   } else if (parameter_.FullRelaxation_) {
+      srmpSolver_.SetFullEdges(parameter_.FullRelaxationMethod_);
+   } else if (parameter_.FullDualRelaxation_) {
+      srmpSolver_.SetFullEdgesDual(parameter_.FullDualRelaxationMethod_);
+   }
+   srmpSolver_.InitEdges();
 }
 
 template<class GM>
@@ -155,6 +175,9 @@ inline SRMP<GM>::~SRMP() {
    }
    for(size_t i = 0; i < generalFactorList_.size(); ++i) {
       delete generalFactorList_[i];
+   }
+   for (auto &x : valueCache_) {
+      delete[] x.second;
    }
 }
 
@@ -179,21 +202,36 @@ template<class VISITOR>
 inline InferenceTermination SRMP<GM>::infer(VISITOR & visitor) {
    visitor.begin(*this);
 
-   if (parameter_.BLPRelaxation_) {
-      srmpSolver_.SetMinimalEdges();
-   } else if (parameter_.FullRelaxation_) {
-      srmpSolver_.SetFullEdges(parameter_.FullRelaxationMethod_);
-   } else if (parameter_.FullDualRelaxation_) {
-      srmpSolver_.SetFullEdgesDual(parameter_.FullDualRelaxationMethod_);
+#if 0
+   {
+      std::ifstream test("repa.h5");
+      if (test.good()) {
+         LPReparametrisationStorage<GM> repa(gm_);
+         opengm::hdf5::load(repa, "repa.h5", "gm");
+         setReparametrization(repa);
+      }
    }
+#endif
 
    // call solver
+   //srmpSolver_.SetFullEdges();
+   //srmpSolver_.Print();
    lowerBound_ = srmpSolver_.Solve(srmpOptions_);
+   //srmpSolver_.Print();
    std::vector<LabelType> l;
    arg(l);
    value_ = gm_.evaluate(l);
 
    visitor.end(*this);
+
+#if 0
+   {
+      LPReparametrisationStorage<GM> repa(gm_);
+      getReparametrization(repa);
+      opengm::hdf5::save(repa, "repa.h5", "gm");
+   }
+#endif
+
    return NORMAL;
 }
 
@@ -223,30 +261,36 @@ inline typename GM::ValueType SRMP<GM>::value() const {
 }
 
 template<class GM>
-inline void SRMP<GM>::addUnaryFactor(const IndexType FactorID) {
-   double* values = new double[gm_[FactorID].numberOfLabels(0)];
-   LabelType label = 0;
-   for(LabelType i = 0; i < gm_[FactorID].numberOfLabels(0); ++i) {
-      values[i] = static_cast<double>(gm_[FactorID](&label));
-      ++label;
+inline double* SRMP<GM>::allocateValues(const IndexType FactorID) {
+   auto key = std::make_pair(gm_[FactorID].functionType(), gm_[FactorID].functionIndex());
+   auto search = valueCache_.find(key);
+   if (search != valueCache_.end()) {
+      return search->second;
+   } else {
+      double *values = new double[gm_[FactorID].size()];
+      ShapeWalkerSwitchedOrder<typename FactorType::ShapeIteratorType> shapeWalker(gm_[FactorID].shapeBegin(), gm_[FactorID].dimension());
+      for(size_t i = 0; i < gm_[FactorID].size(); ++i) {
+         values[i] = gm_[FactorID](shapeWalker.coordinateTuple().begin());
+         ++shapeWalker;
+      }
+      valueCache_[key] = values;
+      return values;
    }
+}
+
+template<class GM>
+inline void SRMP<GM>::addUnaryFactor(const IndexType FactorID) {
+   // FIXME: AddNode allocates memory and AddUnaryFactor just copies the values
+   // into this memory. We could pass pointer in AddNode and then the costs
+   // would not get copied.
+   double* values = allocateValues(FactorID);
    srmpSolver_.AddUnaryFactor(static_cast<srmpLib::Energy::NodeId>(gm_[FactorID].variableIndex(0)), values);
-   delete[] values;
 }
 
 template<class GM>
 inline void SRMP<GM>::addPairwiseFactor(const IndexType FactorID) {
-   double* values = new double[gm_[FactorID].numberOfLabels(0) * gm_[FactorID].numberOfLabels(1)];
-   LabelType labeling[2] = {0, 0};
-   for(LabelType i = 0; i < gm_[FactorID].numberOfLabels(0); ++i) {
-      labeling[0] = i;
-      for(LabelType j = 0; j < gm_[FactorID].numberOfLabels(1); ++j) {
-         labeling[1] = j;
-         values[(i * gm_[FactorID].numberOfLabels(1)) + j] = static_cast<double>(gm_[FactorID](labeling));
-      }
-   }
-   srmpSolver_.AddPairwiseFactor(static_cast<srmpLib::Energy::NodeId>(gm_[FactorID].variableIndex(0)), static_cast<srmpLib::Energy::NodeId>(gm_[FactorID].variableIndex(1)), values);
-   delete[] values;
+   double* values = allocateValues(FactorID);
+   srmpSolver_.AddPairwiseFactor(static_cast<srmpLib::Energy::NodeId>(gm_[FactorID].variableIndex(0)), static_cast<srmpLib::Energy::NodeId>(gm_[FactorID].variableIndex(1)), values, srmpLib::FLAG_DO_NOT_COPY_INTO_INTERNAL_MEMORY);
 }
 
 template<class GM>
@@ -278,13 +322,7 @@ inline void SRMP<GM>::addPottsFactor(const IndexType FactorID) {
 
 template<class GM>
 inline void SRMP<GM>::addGeneralFactor(const IndexType FactorID) {
-   double* values = new double[gm_[FactorID].size()];
-
-   ShapeWalkerSwitchedOrder<typename FactorType::ShapeIteratorType> shapeWalker(gm_[FactorID].shapeBegin(), gm_[FactorID].dimension());
-   for(size_t i = 0; i < gm_[FactorID].size(); ++i) {
-      values[i] = gm_[FactorID](shapeWalker.coordinateTuple().begin());
-      ++shapeWalker;
-   }
+   double* values = allocateValues(FactorID);
 
    srmpLib::Energy::NodeId* nodes = new srmpLib::Energy::NodeId[gm_[FactorID].numberOfVariables()];
    for(IndexType i = 0; i < gm_[FactorID].numberOfVariables(); ++i) {
@@ -292,11 +330,91 @@ inline void SRMP<GM>::addGeneralFactor(const IndexType FactorID) {
    }
 
    srmpLib::GeneralFactorType* generalFactor = new srmpLib::GeneralFactorType;
-
-   srmpSolver_.AddFactor(gm_[FactorID].numberOfVariables(), nodes, values, generalFactor);
+   srmpSolver_.AddFactor(gm_[FactorID].numberOfVariables(), nodes, values, generalFactor, srmpLib::FLAG_DO_NOT_COPY_INTO_INTERNAL_MEMORY);
 
    delete[] nodes;
-   delete[] values;
+}
+
+template<class GM>
+inline void SRMP<GM>::getReparametrization(LPReparametrisationStorage<GM> &repa) const {
+   for (srmpLib::EdgeIterator it(&srmpSolver_); it.valid(); ++it) {
+      if (! (it->alpha.size() >= 2 && it->beta.size() == 1))
+         throw std::runtime_error("This relaxation type is not supported by the LPReparametrisationStorage!");
+
+      // FIXME: This code is probably not very fast.
+      bool found_factor = false;
+      IndexType fac_idx;
+      for (IndexType i = 0; i < gm_.numberOfFactors(it->alpha[0]); ++i) {
+         fac_idx = gm_.factorOfVariable(it->alpha[0], i);
+
+         if (gm_[fac_idx].numberOfVariables() != it->alpha.size())
+            continue;
+
+         found_factor = true;
+         for (IndexType j = 0; j < it->alpha.size(); ++j) {
+            if (gm_[fac_idx].variableIndex(j) != it->alpha[j]) {
+               found_factor = false;
+               break;
+            }
+         }
+
+         if (found_factor)
+            break;
+      }
+
+      if (!found_factor)
+         throw std::runtime_error("Error while finding factor!");
+
+      IndexType local_idx;
+      for (local_idx = 0; local_idx < it->alpha.size(); ++local_idx) {
+         if (it->alpha[local_idx] == it->beta[0])
+            break;
+      }
+
+      auto &message_vector = repa.get(fac_idx, local_idx);
+      std::transform(it->message_begin(), it->message_end(), message_vector.begin(), std::negate<ValueType>());
+   }
+}
+
+template<class GM>
+inline void SRMP<GM>::setReparametrization(const LPReparametrisationStorage<GM> &repa) {
+   for (srmpLib::EdgeIterator it(&srmpSolver_); it.valid(); ++it) {
+      if (! (it->alpha.size() >= 2 && it->beta.size() == 1))
+         throw std::runtime_error("This relaxation type is not supported by the LPReparametrisationStorage!");
+
+      // FIXME: This is copy-pasta from getReparametrization
+      bool found_factor = false;
+      IndexType fac_idx;
+      for (IndexType i = 0; i < gm_.numberOfFactors(it->alpha[0]); ++i) {
+         fac_idx = gm_.factorOfVariable(it->alpha[0], i);
+
+         if (gm_[fac_idx].numberOfVariables() != it->alpha.size())
+            continue;
+
+         found_factor = true;
+         for (IndexType j = 0; j < it->alpha.size(); ++j) {
+            if (gm_[fac_idx].variableIndex(j) != it->alpha[j]) {
+               found_factor = false;
+               break;
+            }
+         }
+
+         if (found_factor)
+            break;
+      }
+
+      if (!found_factor)
+         throw std::runtime_error("Error while finding factor!");
+
+      IndexType local_idx;
+      for (local_idx = 0; local_idx < it->alpha.size(); ++local_idx) {
+         if (it->alpha[local_idx] == it->beta[0])
+            break;
+      }
+
+      const auto &message_vector = repa.get(fac_idx, local_idx);
+      std::transform(message_vector.begin(), message_vector.end(), it->message_begin(), std::negate<ValueType>());
+   }
 }
 
 } // namespace external

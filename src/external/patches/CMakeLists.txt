@@ -93,14 +93,6 @@ add_custom_command(TARGET externalLibs PRE_BUILD
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Blossom5"
 ) 
 
-IF(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../SRMP")
-  add_custom_command(TARGET externalLibs PRE_BUILD                   
-    COMMAND git clone https://github.com/opengm/SRMP.git
-    COMMENT "SRMP"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../"
-  )
-ENDIF()
-
 add_custom_command(TARGET externalLibs PRE_BUILD
                    COMMAND ./patchToulBar2.sh
                    COMMENT "ToulBar2"
@@ -111,4 +103,10 @@ add_custom_command(TARGET externalLibs PRE_BUILD
                    COMMAND ./patchTrwsShekhovtsov.sh
                    COMMENT "TRWS_SHEKHOVTSOV"
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/trws-shekhovtsov"
+)
+
+add_custom_command(TARGET externalLibs PRE_BUILD
+                   COMMAND ./patchSRMP.sh
+                   COMMENT "SRMP"
+                   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/SRMP/"
 )
