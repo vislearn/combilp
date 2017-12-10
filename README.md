@@ -1,10 +1,13 @@
-OpenGM 2
-========
+# CombiLP for OpenGM
 
-[![Build Status](https://travis-ci.org/opengm/opengm.png?branch=master)](https://travis-ci.org/opengm/opengm)
+## About this branch
 
+**WARNING:** This branch contains old and unmaintained code. Further
+information can be found at the [project's website][website].
 
------------------------------------------------------------------------------------------------
+[website]: https://vislearn.github.io/combilp
+
+## Original README
 
 **Forum / Newsgroup** -> https://groups.google.com/forum/#!forum/opengm
 
