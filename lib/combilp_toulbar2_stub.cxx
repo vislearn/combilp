@@ -43,7 +43,7 @@ combilp_toulbar2_stub_initialize
 	tb2init();
 	ToulBar2::uai = 1;
 	ToulBar2::bayesian = true;
-	ToulBar2::vac = 1;
+	ToulBar2::vac = 0;
 	ToulBar2::vacValueHeuristic = true;
 	ToulBar2::hbfs = 1;
 	ToulBar2::hbfsGlobalLimit = 10000;
