@@ -143,7 +143,9 @@ class CombiLP(object):
 
     def solve_ilp_phase(self):
         self.rmodel = self.repa.reparametrize_model(dynamic=True)
-        self.ilp_solver = self.parameters['ilp_solver'](self.rmodel, self.parameters['ilp'])
+        ilp_params = self.parameters['ilp'].copy()
+        ilp_params['warmstart'] = self.sac_labeling
+        self.ilp_solver = self.parameters['ilp_solver'](self.rmodel, ilp_params)
 
         self.add_varariables_to_ilp([v for v, x in enumerate(self.sac_mask) if not x])
         assert(self.mask == [not x for x in self.sac_mask])

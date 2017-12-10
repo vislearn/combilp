@@ -175,7 +175,9 @@ class Cplex(ILPSolver):
 
 class NonIterativeSolver(ILPSolver):
 
-    DEFAULT_PARAMETERS = {}
+    DEFAULT_PARAMETERS = {
+        'warmstart': None,
+    }
 
     def __init__(self, model, parameters=None):
         super().__init__(model, parameters)
@@ -183,6 +185,8 @@ class NonIterativeSolver(ILPSolver):
         self.variable_map = None
         self.variables = []
         self.factors = []
+        self.warmstart = self.parameters['warmstart']
+        del self.parameters['warmstart']
 
     def add_variable(self, variable):
         self.variables.append(variable)
@@ -199,8 +203,25 @@ class NonIterativeSolver(ILPSolver):
                 data=factor.data)
             model.add_factor(wrapped_factor)
 
+        params = self.parameters
+        if self.warmstart is not None:
+            print('Adjusting warmstart parameter...')
+            if self.solver:
+                prev_labeling = self.labeling()
+            else:
+                prev_labeling = [None] * self.model.number_of_variables
+            current_warmstart = make_labeling(model.number_of_variables)
+            for variable in range(model.number_of_variables):
+                original_variable = self.variables[variable]
+                if prev_labeling[original_variable] is not None:
+                    current_warmstart[variable] = prev_labeling[original_variable]
+                else:
+                    current_warmstart[variable] = self.warmstart[original_variable]
+            params = self.parameters.copy()
+            params['warmstart'] = current_warmstart
+
         print('Reconstructing new solver...')
-        self.solver = self._SOLVER(model, self.parameters)
+        self.solver = self._SOLVER(model, params)
         self.solver.add_full_model()
 
     def solve(self):
@@ -222,11 +243,13 @@ class ToulBar2(NonIterativeSolver):
     class _SOLVER(ILPSolver):
 
         DEFAULT_PARAMETERS = {
-            'scaling_factor': 1e6
+            'scaling_factor': 1e6,
+            'warmstart': None,
         }
 
         def __init__(self, model, parameters=None):
             super().__init__(model, parameters)
+            self.constant = 0
             self._init_library()
 
             min_cost, max_cost = c_int64(), c_int64()
@@ -255,7 +278,7 @@ class ToulBar2(NonIterativeSolver):
             self._add_factor.argtypes = [c_void_p, c_int32, ndpointer(dtype=c_int32), ndpointer(dtype=c_int32), ndpointer(dtype=c_int64)]
 
             self._solve = self._lib.combilp_toulbar2_stub_solve
-            self._solve.argtypes = [c_void_p]
+            self._solve.argtypes = [c_void_p, c_int64]
             self._solve.restype = c_bool
 
             self._get_labeling = self._lib.combilp_toulbar2_stub_get_labeling
@@ -268,9 +291,15 @@ class ToulBar2(NonIterativeSolver):
                 shape = numpy.asarray(shape, dtype=c_int32)
                 self._add_factor(self._solver, factor.number_of_variables,
                     factor.variables, shape, self.convert_costs(factor.data))
+                self.constant += factor.data.min()
 
         def solve(self):
-            result = self._solve(self._solver)
+            ub = self.max_cost
+            if self.parameters['warmstart'] is not None:
+                ub = (self.model.evaluate(self.parameters['warmstart']) - self.constant) * self.parameters['scaling_factor']
+                ub = int(ub) + 1
+
+            result = self._solve(self._solver, ub)
             if not result:
                 raise RuntimeError('Inference was not optimal.')
 

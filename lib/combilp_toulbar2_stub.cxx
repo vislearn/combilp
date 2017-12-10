@@ -132,10 +132,15 @@ combilp_toulbar2_stub_add_factor
 bool
 combilp_toulbar2_stub_solve
 (
-	WeightedCSPSolver *solver
+	WeightedCSPSolver *solver,
+	Cost upper_bound
 )
 {
 	auto *prob = solver->getWCSP();
+	if (upper_bound != MAX_COST) {
+		std::cout << "combilp_toulbar2_stub_solve -> updating upper bound to " << upper_bound << std::endl;
+		prob->updateUb(upper_bound);
+	}
 	prob->sortConstraints(); // Needs to be called before search.
 
 	return solver->solve();
