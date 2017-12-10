@@ -89,6 +89,7 @@ OPTION(WITH_OPENMP "Include OpenMP" OFF)
 OPTION(WITH_VIGRA "Include VIGRA" OFF)
 OPTION(WITH_CONICBUNDLE "Include ConicBundleLibrary" OFF)
 OPTION(WITH_MATLAB "Activate MatLab-Code" OFF)
+OPTION(WITH_TRWS_SHEKHOVTSOV "Include external TRWS algorithm by A. Shekhovtsov" OFF)
 OPTION(BUILD_CONVERTER "Build several converters" OFF)
 OPTION(BUILD_PYTHON_WRAPPER "Build python wrapper" OFF)
 OPTION(BUILD_MATLAB_WRAPPER "Build matlab wrapper" OFF)
@@ -525,6 +526,17 @@ else(WITH_BLOSSOM5)
    message(STATUS "build without external inference algorithm BLOSSOM5")
 endif(WITH_BLOSSOM5)
 
+#--------------------------------------------------------------
+# TRWS_SHEKHOVTSOV
+#--------------------------------------------------------------
+if(WITH_TRWS_SHEKHOVTSOV)
+   message(STATUS "build with external TRWS implementation by A. Shekhovtsov")
+   SET(TRWS_SHEKHOVTSOV_PATCHEDSRCDIR "${PROJECT_SOURCE_DIR}/src/external/trws-shekhovtsov.src-patched/" CACHE STRING "TRWS_SHEKHOVTSOV source code directory")
+   add_definitions(-DWITH_TRWS_SHEKHOVTSOV)
+   include_directories(${TRWS_SHEKHOVTSOV_PATCHEDSRCDIR})
+else()
+   message(STATUS "build without external TWRS implementation by A. Shekhovtsov")
+endif(WITH_TRWS_SHEKHOVTSOV)
 
 #--------------------------------------------------------------
 # thread lib

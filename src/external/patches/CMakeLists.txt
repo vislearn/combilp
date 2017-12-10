@@ -100,3 +100,9 @@ IF(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../SRMP")
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../"
   )
 ENDIF()
+
+add_custom_command(TARGET externalLibs PRE_BUILD
+                   COMMAND ./patchTrwsShekhovtsov.sh
+                   COMMENT "TRWS_SHEKHOVTSOV"
+                   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/trws-shekhovtsov"
+)

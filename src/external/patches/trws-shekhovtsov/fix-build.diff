@@ -1,0 +1,11 @@
+--- a/trws_shekhovtsov/streams/text_stream.h	2015-12-15 14:17:43.000000000 +0000
++++ b/trws_shekhovtsov/streams/text_stream.h	2016-06-08 13:08:48.864974442 +0000
+@@ -1,6 +1,8 @@
+ #ifndef text_stream_h
+ #define text_stream_h
+ 
++#include <stdio.h>
++
+ //#include "advstreaming.h"
+ #include "virtual_stream.h"
+ 

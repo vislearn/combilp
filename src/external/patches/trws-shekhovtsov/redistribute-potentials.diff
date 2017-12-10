@@ -1,0 +1,21 @@
+--- a/trws_shekhovtsov/optim/part_opt/trws_machine.cpp	2017-05-08 15:06:54.821952078 +0200
++++ b/trws_shekhovtsov/optim/part_opt/trws_machine.cpp	2017-05-08 14:32:56.249453910 +0200
+@@ -469,6 +469,18 @@
+ 	debug::stream << "LB= " << txt::String::Format("%8.4f", LB) << " E= " << txt::String::Format("%8.4f", best_E) << "\n";
+ 	//debug::stream << "TRWS Time: " << txt::String::Format("%3.2f", total_t1) << " s. ";
+ 	hist.resize(mint2(4, it)); // in case when finished earlier
++
++	std::cout << "it=" << total_it << std::endl;
++	std::cout << "Redistributing TRW-S potentials..." << std::endl;
++	type increment = .1; // TODO: Check if we can something more clever here.
++	std::cout << "increment=" << increment << std::endl;
++	for (full_iterator ii(this); ii.valid(); ++ii) {
++		int s = ii.s();
++		node_info &node = nodes[s];
++		node.core->coeff = 1.0 / ((1.0 / node.core->coeff) + increment);
++	}
++	run(1);
++	std::cout << "it=" << total_it << std::endl;
+ };
+ 
+ template<class vtype>

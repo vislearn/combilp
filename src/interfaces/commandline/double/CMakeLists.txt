@@ -110,6 +110,9 @@
       )
     endif()
 
+    if(WITH_TRWS_SHEKHOVTSOV)
+      target_link_libraries(opengm_min_sum opengm-external-trws-shekhovtsov)
+    endif()
 
     INSTALL_TARGETS(/bin opengm_max_prod) 
     INSTALL_TARGETS(/bin opengm_min_sum)
