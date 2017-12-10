@@ -2,7 +2,8 @@ import combilp
 import numpy
 import unittest
 
-from combilp import Model, Factor, Reparametrization, find_unary_factor_indices, count_neighbors, unary_reparametrization, compute_strict_arc_consistency, reparametrize_border_factor, reparametrize_border
+from combilp import Model, Factor, Reparametrization
+from combilp.utils import find_unary_factor_indices, count_neighbors, unary_reparametrization, compute_strict_arc_consistency, reparametrize_border_factor, reparametrize_border
 
 def create_random_model():
     num_vars = 10
