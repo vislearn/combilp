@@ -20,6 +20,7 @@
 
 import ctypes
 import itertools
+import math
 import numpy
 
 from ctypes import POINTER, c_bool, c_int32, c_int64, c_void_p
@@ -297,8 +298,9 @@ class ToulBar2(NonIterativeSolver):
         def solve(self):
             ub = self.max_cost
             if self.parameters['warmstart'] is not None:
-                ub = (self.model.evaluate(self.parameters['warmstart']) - self.constant) * self.parameters['scaling_factor']
-                ub = int(ub) + 1
+                possible_ub = (self.model.evaluate(self.parameters['warmstart']) - self.constant) * self.parameters['scaling_factor']
+                if not math.isinf(possible_ub):
+                    ub = int(possible_ub) + 1
 
             result = self._solve(self._solver, ub)
             if not result:
@@ -315,5 +317,7 @@ class ToulBar2(NonIterativeSolver):
 
         def convert_costs(self, values):
             minimal = values.min()
-            return numpy.asarray((values - minimal) * self.parameters['scaling_factor'],
+            result = numpy.asarray((values - minimal) * self.parameters['scaling_factor'],
                 dtype=c_int64)
+            result[numpy.isposinf(values)] = self.max_cost
+            return result
