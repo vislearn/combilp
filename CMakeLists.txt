@@ -85,6 +85,7 @@ OPTION(WITH_MPLP "Include wrapper for MPLP code" OFF)
 OPTION(WITH_SRMP "Include wrapper for SRMP code" OFF)
 OPTION(WITH_PLANARITY "Include wrapper for PLANARITY code" OFF)
 OPTION(WITH_BLOSSOM5 "Include wrapper for BLOSSOM5 code" OFF)
+OPTION(WITH_TOULBAR2 "Include wrapper for ToulBar2 code" OFF)
 OPTION(WITH_OPENMP "Include OpenMP" OFF)
 OPTION(WITH_VIGRA "Include VIGRA" OFF)
 OPTION(WITH_CONICBUNDLE "Include ConicBundleLibrary" OFF)
@@ -525,6 +526,25 @@ if(WITH_BLOSSOM5)
 else(WITH_BLOSSOM5)
    message(STATUS "build without external inference algorithm BLOSSOM5")
 endif(WITH_BLOSSOM5)
+
+#--------------------------------------------------------------
+# ToulBar2
+#--------------------------------------------------------------
+if(WITH_TOULBAR2)
+   message(STATUS "build with external inference algorithm ToulBar2")
+   SET(TOULBAR2_PATCHEDSRCDIR "${PROJECT_SOURCE_DIR}/src/external/ToulBar2.src-patched/" CACHE STRING "ToulBar2 patched source code directory")
+   add_definitions(-DWITH_TOULBAR2 -DLONGDOUBLE_PROB -DLONGLONG_COST -DNARYCHAR -DWCSPFORMATONLY -DWIDE_STRING)
+   if(WITH_BOOST)
+      add_definitions(-DBOOST)
+   endif()
+   if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+      add_definitions(-DLINUX)
+   endif()
+   include_directories(${TOULBAR2_PATCHEDSRCDIR}/src)
+   find_library(GMP REQUIRED)
+else()
+   message(STATUS "build without external inference algorithm ToulBar2")
+endif()
 
 #--------------------------------------------------------------
 # TRWS_SHEKHOVTSOV

@@ -127,6 +127,10 @@
 #include "../../common/caller/intersection_based_caller.hxx"
 #endif
 
+#ifdef WITH_TOULBAR2
+#include "../../common/caller/toulbar2.hxx"
+#endif
+
 using namespace opengm;
 
 int main(int argc, char** argv) {
@@ -265,7 +269,7 @@ int main(int argc, char** argv) {
 #if  defined(WITH_VIGRA) && ( defined(WITH_QPBO) || defined(WITH_CPLEX) || defined(WITH_BLOSSOM5) && defined(WITH_PLANARITY) )
       interface::IntersectionBasedCaller<InterfaceType, GmType, AccumulatorType>,
 #endif      
-        opengm::meta::ListEnd
+      interface::ToulBar2Caller<InterfaceType, GmType, AccumulatorType>
    >::type ExternalILPInferenceTypeList;
 
    typedef meta::MergeTypeLists<NativeInferenceTypeList, ExternalInferenceTypeList>::type InferenceTypeList_T1;

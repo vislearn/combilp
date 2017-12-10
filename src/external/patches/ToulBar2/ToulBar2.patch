@@ -1,0 +1,47 @@
+diff -Nurp a/src/tb2solver.cpp b/src/tb2solver.cpp
+--- a/src/tb2solver.cpp	2017-03-02 12:46:57.982401122 +0000
++++ b/src/tb2solver.cpp	2017-03-02 12:46:38.449345753 +0000
+@@ -655,6 +655,7 @@ void Solver::showGap(Cost newLb, Cost ne
+         globalUpperBound = MIN(globalUpperBound, newUb);
+         int newgap = (int)(100. - 100. * (globalLowerBound - initialLowerBound) / (globalUpperBound - initialLowerBound));
+         if (ToulBar2::verbose >=0 && newgap < oldgap) cout << "Optimality gap: [ " <<  globalLowerBound << " , " << globalUpperBound << " ] " << (100.*(globalUpperBound-globalLowerBound))/globalUpperBound << " % (" << nbBacktracks << " backtracks, " << nbNodes << " nodes)" << endl;
++        if (ToulBar2::callback != NULL && newgap < oldgap) (*ToulBar2::callback)(globalUpperBound, globalLowerBound);
+     }
+ }
+ 
+diff -Nurp a/src/tb2types.hpp b/src/tb2types.hpp
+--- a/src/tb2types.hpp	2016-04-05 15:30:59.000000000 +0000
++++ b/src/tb2types.hpp	2017-03-02 10:35:20.103611325 +0000
+@@ -261,11 +261,21 @@ struct ValueCost {
+     friend bool operator==(const ValueCost &u, const ValueCost &v) {return u.cost == v.cost;}
+ };
+ 
++
+ ///contains all global variables (mainly solver's command-line options)
+ class ToulBar2 {
+ protected:
+     virtual ~ToulBar2() = 0; // Trick to avoid any instantiation of ToulBar2
+ public:
++
++    class Callback {
++    public:
++        virtual void operator()(Cost value, Cost bound) = 0;
++    };
++
++
++    static Callback *callback;
++
+     static string version;
+     static int verbose;
+     static int debug;
+diff -Nurp a/src/tb2wcsp.cpp b/src/tb2wcsp.cpp
+--- a/src/tb2wcsp.cpp	2017-03-02 12:46:58.015733980 +0000
++++ b/src/tb2wcsp.cpp	2017-03-02 11:06:34.332856349 +0000
+@@ -46,6 +46,7 @@ StoreStack<BTList<Separator *> , DLink<S
+ 
+ int WCSP::wcspCounter = 0;
+ 
++ToulBar2::Callback *ToulBar2::callback;
+ int ToulBar2::verbose;
+ int ToulBar2::debug;
+ bool ToulBar2::showSolutions;

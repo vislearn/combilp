@@ -114,6 +114,10 @@
       target_link_libraries(opengm_min_sum opengm-external-trws-shekhovtsov)
     endif()
 
+    if(WITH_TOULBAR2)
+      target_link_libraries(opengm_min_sum opengm-external-toulbar2)
+    endif()
+
     INSTALL_TARGETS(/bin opengm_max_prod) 
     INSTALL_TARGETS(/bin opengm_min_sum)
     INSTALL_TARGETS(/bin opengm_min_sum_small)

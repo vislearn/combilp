@@ -102,6 +102,12 @@ IF(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../SRMP")
 ENDIF()
 
 add_custom_command(TARGET externalLibs PRE_BUILD
+                   COMMAND ./patchToulBar2.sh
+                   COMMENT "ToulBar2"
+                   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ToulBar2"
+)
+
+add_custom_command(TARGET externalLibs PRE_BUILD
                    COMMAND ./patchTrwsShekhovtsov.sh
                    COMMENT "TRWS_SHEKHOVTSOV"
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/trws-shekhovtsov"

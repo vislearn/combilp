@@ -535,7 +535,79 @@
    
   endif(WITH_BLOSSOM5)
 
+IF(WITH_TOULBAR2)
+    # FIXME: Check whether all these files are actually used in the
+    # clients of the library.
+    SET(TOULBAR2_SRC_FILES
+        ${TOULBAR2_PATCHEDSRCDIR}/src/incop/autotuning2.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/incop/csproblem.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/incop/incopalgo.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/incop/incoputil.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/incop/narycsproblem.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/incop/timer.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2abstractconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2alldiffconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2amongconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2arithmetic.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2automaton.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2bep.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2binconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2boostgraph.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2btd.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2btqueue.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2clusters.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2constraint.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2domain.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2dpglobalconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2enumvar.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2flowbasedconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2globalcardinalityconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2globalconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2globaldecomposable.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2grammarconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2grammarutils.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2graph.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2haplotype.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2intervar.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2linearconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2lpsconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2maxconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2mipsolver.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2naryconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2pedigree.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2queue.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2randomgen.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2reader.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2regulardpconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2regularflowconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2sameconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2solver.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2system.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2ternaryconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2treeconstr.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2vac.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2vacutils.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2variable.cpp
+        ${TOULBAR2_PATCHEDSRCDIR}/src/tb2wcsp.cpp
+    )
+    SET(TOULBAR2_SRC_FILES_EXIST 1)
+    FOREACH(f ${TOULBAR2_SRC_FILES})
+        IF(NOT EXISTS ${f})
+            UNSET(TOULBAR2_SRC_FILES_EXIST)
+        ENDIF()
+    ENDFOREACH()
 
+    IF(DEFINED TOULBAR2_SRC_FILES_EXIST)
+        ADD_LIBRARY(opengm-external-toulbar2 ${TOULBAR2_SRC_FILES})
+        ADD_LIBRARY(opengm-external-toulbar2-shared SHARED ${TOULBAR2_SRC_FILES})
+        # FIXME: We should use ${GMP_LIBRARIES} here. Unfortunately FindGMP is
+        # pretty broken in OpenGM. We need to fix it first.
+        TARGET_LINK_LIBRARIES(opengm-external-toulbar2 gmp)
+        TARGET_LINK_LIBRARIES(opengm-external-toulbar2-shared gmp)
+    ELSE()
+        MESSAGE("ToulBar2 not installed, run make externalLibs first and configure again")
+    ENDIF()
+ENDIF()
 
   IF(WITH_TRWS_SHEKHOVTSOV)
     IF(NOT EXISTS ${TRWS_SHEKHOVTSOV_PATCHEDSRCDIR})
