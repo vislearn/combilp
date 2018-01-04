@@ -15,7 +15,7 @@ def main(argv):
         'threads': 1,
     }
 
-    if ilp_mode in ('Cplex', 'CplexNonIterative', 'ToulBar2'):
+    if ilp_mode in ('Cplex', 'CplexNonIterative', 'Gurobi', 'GurobiNonIterative', 'ToulBar2'):
         cls = getattr(combilp.subsolvers.ilp, ilp_mode)
     else:
         raise NotImplementedError

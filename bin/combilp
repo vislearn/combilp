@@ -21,7 +21,7 @@ def main(argv):
     else:
         raise NotImplementedError
 
-    if ilp_mode in ('Cplex', 'CplexNonIterative', 'ToulBar2'):
+    if ilp_mode in ('Cplex', 'CplexNonIterative', 'Gurobi', 'GurobiNonIterative', 'ToulBar2'):
         parameters['ilp_solver'] = getattr(combilp.subsolvers.ilp, ilp_mode)
     else:
         raise NotImplementedError

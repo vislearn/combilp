@@ -34,6 +34,11 @@ try:
 except ImportError:
     cplex = None
 
+try:
+    import gurobipy
+except ImportError:
+    gurobipy = None
+
 def cplex_is_optimal(cpl):
     optimal_statuses = (
         cpl.solution.status.MIP_optimal,
@@ -174,6 +179,85 @@ class Cplex(ILPSolver):
                     break
         return result
 
+class Gurobi(ILPSolver):
+
+    DEFAULT_PARAMETERS = {
+        'threads': 0,
+    }
+
+    def __init__(self, model, parameters=None):
+        super().__init__(model, parameters)
+        if not gurobipy:
+            raise RuntimeError('Required module gurobipy is not available.')
+
+        self._env = gurobipy.Env()
+        self._model = gurobipy.Model(env=self._env)
+        self._obj = gurobipy.LinExpr()
+        self._variables = [None] * model.number_of_variables
+        self._constant = 0.0
+
+    def add_variable(self, variable):
+        num_labs = int(self.model.shape[variable])
+        result = self._model.addVars(num_labs, lb=0.0, ub=1.0, vtype=gurobipy.GRB.BINARY)
+        self._model.addConstr(result.sum() == 1.0)
+        self._variables[variable] = result
+
+    def add_factor(self, factor):
+        # copy factor for normalization
+        factor = Factor(factor.variables, data=numpy.copy(factor.data))
+        minimum = factor.data.min()
+        self._constant += minimum
+        factor.data -= minimum
+
+        # handle infinity
+        factor.data[factor.data > gurobipy.GRB.INFINITY] = gurobipy.GRB.INFINITY
+        factor.data[factor.data < -gurobipy.GRB.INFINITY] = -gurobipy.GRB.INFINITY
+
+        if factor.number_of_variables == 1:
+            self._add_factor_unary(factor)
+        else:
+            self._add_factor_generic(factor)
+
+    def _add_factor_unary(self, factor):
+        variable, = factor.variables
+        self._obj.addTerms(factor.data, self._variables[variable].select())
+
+    def _add_factor_generic(self, factor):
+        result = self._model.addVars(*factor.shape, lb=0.0, ub=1.0)
+        # FIXME: Check correct index ordering
+        self._obj.addTerms(factor.data.ravel(), result.select())
+
+        # FIXME: This is slow as hell.
+        for variable, num_labels in enumerate(factor.shape):
+            for label in range(num_labels):
+                unary_var = self._variables[factor.variables[variable]][label]
+                selector = ['*'] * num_labels
+                selector[variable] = label
+                lin_expr = sum(result.select(*selector)) - unary_var
+                self._model.addConstr(lin_expr == 0.0)
+
+    def solve(self):
+        self._model.setParam('Threads', self.parameters['threads'])
+        self._model.setObjective(self._obj, gurobipy.GRB.MINIMIZE)
+        self._model.optimize()
+
+    def upper_bound(self):
+        return self._model.getObjective().getValue() + self._constant
+
+    def labeling(self):
+        result = [None] * self.model.number_of_variables
+        for variable in range(len(result)):
+            if self._variables[variable] is None:
+                continue
+
+            assert(len([k for k, v in self._variables[variable].items() if v.x >.5]) == 1)
+
+            for label, var in self._variables[variable].items():
+                if var.x > .5:
+                    result[variable] = label
+                    break
+        return result
+
 class NonIterativeSolver(ILPSolver):
 
     DEFAULT_PARAMETERS = {
@@ -239,6 +323,9 @@ class NonIterativeSolver(ILPSolver):
 
 class CplexNonIterative(NonIterativeSolver):
     _SOLVER = Cplex
+
+class GurobiNonIterative(NonIterativeSolver):
+    _SOLVER = Gurobi
 
 class ToulBar2(NonIterativeSolver):
     class _SOLVER(ILPSolver):
