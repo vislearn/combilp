@@ -12,4 +12,4 @@
 
 [submodule "external/toulbar2"]
 	path = external/toulbar2
-	url = http://mulcyber.toulouse.inra.fr/anonscm/git/toulbar2/toulbar2.git
+	url = https://github.com/toulbar2/toulbar2
