@@ -8,6 +8,12 @@ set(VERSION_MAJOR 0)
 set(VERSION_MINOR 0)
 set(VERSION_PATCH 0)
 
+set(SUPERSEDE_PYTHON_SITELIB "" CACHE PATH "Force installation of Python3 module to a different directory.")
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+if(NOT "${SUPERSEDE_PYTHON_SITELIB}" STREQUAL "")
+	set(Python3_SITELIB "${SUPERSEDE_PYTHON_SITELIB}")
+endif()
+
 #
 # combilp_opengm_stub
 #
@@ -133,3 +139,8 @@ add_library(combilp_toulbar2_stub SHARED
 target_include_directories(combilp_toulbar2_stub PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/external/toulbar2/toulbar2/src)
 set_target_properties(combilp_toulbar2_stub PROPERTIES COMPILE_DEFINITIONS "LONGDOUBLE_PROB;LONGLONG_COST;NARYCHAR;WCSPFORMATONLY;WIDE_STRING;LINUX")
 target_link_libraries(combilp_toulbar2_stub gmp)
+
+install(TARGETS combilp_opengm_stub combilp_trws_stub combilp_srmp_stub combilp_toulbar2_stub DESTINATION lib)
+install(DIRECTORY combilp DESTINATION "${Python3_SITELIB}")
+install(PROGRAMS bin/combilp bin/plain DESTINATION bin)
+install(CODE "execute_process(COMMAND \"${Python3_EXECUTABLE}\" -m compileall \"${Python3_SITELIB}/combilp\")")
