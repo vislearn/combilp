@@ -9,10 +9,10 @@ trap 'rm -rf "${build_dir}" "${install_dir}"' EXIT
 custom_sitelib="${install_dir}/lib/python/site-packages"
 export PYTHONPATH="${custom_sitelib}${PYTHONPATH:+:${PYTHONPATH}}"
 export LD_LIBRARY_PATH="${install_dir}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-export PATH="${install_dir}/bin:${PATH:+:${PATH}}"
+export PATH="${install_dir}/bin${PATH:+:${PATH}}"
 
 cd "${build_dir}"
-if cmake -GNinja -DCMAKE_INSTALL_PREFIX="${install_dir}" -DCMAKE_BUILD_TYPE=Debug -DSUPERSEDE_PYTHON_SITELIB="${PYTHONPATH}" "${source_dir}"; then
+if cmake -GNinja -DCMAKE_INSTALL_PREFIX="${install_dir}" -DCMAKE_BUILD_TYPE=Debug -DSUPERSEDE_PYTHON_SITELIB="${custom_sitelib}" "${source_dir}"; then
 	ninja
 	ninja install
 fi
